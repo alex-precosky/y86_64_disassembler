@@ -1,10 +1,12 @@
 
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include "printRoutines.h"
 
 // You probably want to create a number of printing routines in this file.
 // Put the prototypes in printRoutines.h
+
 
 
 /*********************************************************************
@@ -123,4 +125,299 @@ int samplePrint(FILE *out) {
 
   return res;
 }  
+
+
+
+void print_register_name(char* dest, unsigned char register_code)
+{
+  switch(register_code)
+    {
+      case 0:
+	strcpy(dest, "%rax");
+	break;
+      case 1:
+	strcpy(dest, "%rcx");
+	break;
+      case 2:
+	strcpy(dest, "%rdx");
+	break;
+      case 3:
+	strcpy(dest, "%rbx");
+	break;
+      case 4:
+	strcpy(dest, "%rsp");
+	break;
+      case 5:
+	strcpy(dest, "%rbp");
+	break;
+      case 6:
+	strcpy(dest, "%rsi");
+	break;
+      case 7:
+	strcpy(dest, "%rdi");
+	break;
+      case 8:
+	strcpy(dest, "%r8");
+	break;
+      case 9:
+	strcpy(dest, "%r9");
+	break;
+      case 10:
+	strcpy(dest, "%r10");
+	break;
+      case 11:
+	strcpy(dest, "%r11");
+	break;
+      case 12:
+	strcpy(dest, "%r12");
+	break;
+      case 13:
+	strcpy(dest, "%r13");
+	break;
+      case 14:
+	strcpy(dest, "%r14");
+	break;
+      default:
+	strcpy(dest, "%r-1");
+	break;
+    }
+
+
+}
+
+// returns 1 if valid
+int check_valid_instruction(unsigned char icode, unsigned char ifun)
+{
+  switch(icode)
+    {
+      case HALT:
+      case NOP:
+      case IRMOV:
+      case RMMOV:
+      case MRMOV:
+      case CALL:
+      case RET:
+      case PUSH:
+      case POP:
+	if(ifun != 0)
+	  return 0;
+	else
+	  return 1;
+	break;
+
+      case RRMOV:
+      case MATH:
+      case JUMP:
+	if(ifun > 6)
+	  return 0;
+	else
+	  return 1;
+	break;
+
+      default:
+	return 0;
+    }
+}
   
+void print_instruction(FILE* outputFile, long address, unsigned char icode, unsigned char ifun, 
+		       unsigned char rA, unsigned char rB, unsigned long D, 
+		       int num_instruction_bytes, unsigned char* instruction_bytes)
+{
+  char opcode_str[10];
+  static int last_icode = -1;
+
+  if(num_instruction_bytes == 0)
+    return;
+
+  printf("printing instruction of %d bytes\n\n", num_instruction_bytes);
+
+  // make strings for rA and rB
+  char rA_str[10];
+  char rB_str[10];
+
+  print_register_name(rA_str, rA);
+  print_register_name(rB_str, rB);
+
+
+  // print the instruction bytes into a hex string
+  char instruction_bytes_str[21];
+  for(int i = 0; i < num_instruction_bytes; i++)
+    {
+      char byte_str[3];
+      sprintf(byte_str, "%02X", instruction_bytes[i]);
+      instruction_bytes_str[2*i] = byte_str[0];
+      instruction_bytes_str[2*i+1] = byte_str[1];
+    }
+  instruction_bytes_str[2*num_instruction_bytes] = '\0';
+
+
+
+  switch(icode)
+    {
+      case HALT:
+	strcpy(opcode_str, "halt");
+	break;
+      case RET:
+	strcpy(opcode_str, "ret");
+	break;
+      case NOP:
+	strcpy(opcode_str, "nop");
+	break;
+      case IRMOV:
+	strcpy(opcode_str, "irmovq");
+	break;
+      case MRMOV:
+	strcpy(opcode_str, "mrmovq");
+	break;
+      case RMMOV:
+	strcpy(opcode_str, "rmmovq");
+	break;
+      case CALL:
+	strcpy(opcode_str, "call");
+	break;
+      case PUSH:
+	strcpy(opcode_str, "pushq");
+	break;
+      case POP:
+	strcpy(opcode_str, "popq");
+	break;
+      case RRMOV:
+	switch(ifun)
+	  {
+	    case RRMOVQ:
+	      strcpy(opcode_str, "rrmovq");
+	      break;
+	    case CMOVLE:
+	      strcpy(opcode_str, "cmovle");
+	      break;
+	    case CMOVL:
+	      strcpy(opcode_str, "cmovl");
+	      break;
+	    case CMOVE:
+	      strcpy(opcode_str, "cmove");
+	      break;
+	    case CMOVNE:
+	      strcpy(opcode_str, "cmovne");
+	      break;
+	    case CMOVGE:
+	      strcpy(opcode_str, "cmovge");
+	      break;
+	    case CMOVG:
+	      strcpy(opcode_str, "cmovg");
+	      break;	   
+	  }
+	break;
+      case JUMP:
+	switch(ifun)
+	  {
+	    case JMP:
+	      strcpy(opcode_str, "jmp");
+	      break;
+	    case JLE:
+	      strcpy(opcode_str, "jle");
+	      break;
+	    case JL:
+	      strcpy(opcode_str, "jl");
+	      break;
+	    case JE:
+	      strcpy(opcode_str, "je");
+	      break;
+	    case JNE:
+	      strcpy(opcode_str, "jne");
+	      break;
+	    case JGE:
+	      strcpy(opcode_str, "jge");
+	      break;
+	    case JG:
+	      strcpy(opcode_str, "jg");
+	      break;	   
+	  }
+
+	break;
+      case MATH:
+	switch(ifun)
+	  {
+	    case ADD:
+	      strcpy(opcode_str, "addq");
+	      break;
+	    case SUB:
+	      strcpy(opcode_str, "subq");
+	      break;
+	    case AND:
+	      strcpy(opcode_str, "andq");
+	      break;
+	    case XOR:
+	      strcpy(opcode_str, "xorq");
+	      break;
+	    default:
+	      strcpy(opcode_str, "err");
+	      break;
+	  }
+	break;
+      default:
+	strcpy(opcode_str, "err");
+	break;
+
+    }
+
+
+  int is_valid_instruction = check_valid_instruction(icode, ifun);
+  
+  if(is_valid_instruction)
+    {
+      switch(icode)
+	{
+	case RRMOV:
+	case MATH:
+	  fprintf(outputFile, "%016lx: %-22s%-8s%s, %s\n", 
+		  address, instruction_bytes_str, opcode_str, rA_str, rB_str);
+	  break;
+	case IRMOV:
+	  fprintf(outputFile, "%016lx: %-22s%-8s$%#lx, %s\n", 
+		  address, instruction_bytes_str, opcode_str, D, rB_str);       
+	  break;
+	case MRMOV:
+	  fprintf(outputFile, "%016lx: %-22s%-8s%#lx(%s), %s\n", 
+		  address, instruction_bytes_str, opcode_str, D, rB_str, rA_str); 
+	  break;
+	case RMMOV:
+	  fprintf(outputFile, "%016lx: %-22s%-8s%s,%#lx(%s)\n", 
+		  address, instruction_bytes_str, opcode_str, rA_str, D, rB_str); 
+	  break;
+	case JUMP:
+	case CALL:
+	  fprintf(outputFile, "%016lx: %-22s%-8s%#lx\n", 
+		  address, instruction_bytes_str, opcode_str, D);
+	  break;
+	case RET:
+	case NOP:
+	  fprintf(outputFile, "%016lx: %-22s%-8s\n", 
+		  address, instruction_bytes_str, opcode_str);
+	  break;
+	case HALT:
+	  if( last_icode != HALT)
+	    fprintf(outputFile, "%016lx: %-22s%-8s\n", 
+		    address, instruction_bytes_str, opcode_str);
+	  break;
+	case PUSH:
+	case POP:
+	  fprintf(outputFile, "%016lx: %-22s%-8s%s\n", 
+		  address, instruction_bytes_str, opcode_str, rA_str);
+	  
+	  break;
+
+	default:
+	  fprintf(outputFile, "not supported icode: %d\n", icode);
+	}
+    }
+  else // invalid instruction
+    {
+      fprintf(outputFile, "%016lx: %-22s%-8s%#lX\n",
+	      address, instruction_bytes_str, ".quad", *(uint64_t*)instruction_bytes);
+    }
+
+
+
+  last_icode = icode;
+
+}
